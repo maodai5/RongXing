@@ -30,6 +30,7 @@ from app.routers.pets import router as pet_router
 from app.routers.quota import router as quota_router
 from app.routers.screening import router as screening_router
 from app.routers.tasks import router as task_router
+from app.routers.vision import router as vision_router
 from app.routers.weights import router as weight_router
 
 load_env()
@@ -50,6 +51,7 @@ ROUTERS = (
     weight_router,
     chat_router,
     quota_router,
+    vision_router,
 )
 
 
@@ -83,6 +85,7 @@ def create_app(settings: Settings) -> FastAPI:
     instance.state.chat_config = settings.chat_config
     instance.state.motion_config = settings.motion_config
     instance.state.chat_llm_provider = settings.chat_llm_provider
+    instance.state.vision_provider = settings.vision_provider
     instance.state.placeholder_library = settings.placeholder_library
 
     instance.get('/api/v1/health')(health)

@@ -1,6 +1,6 @@
 """arq worker: DB-backed task execution with lease sweep and media cleanup.
 
-Run with: REDIS_URL=... DATABASE_URL=... DASHSCOPE_API_KEY=... MEDIA_S3_*... arq app.worker.WorkerSettings
+Run with: REDIS_URL=... DATABASE_URL=... ZHIPU_API_KEY 或 DASHSCOPE_API_KEY ... MEDIA_S3_*... arq app.worker.WorkerSettings
 The DB tasks table is the source of truth; the sweep dispatches pending tasks and
 reclaims expired leases every 5 seconds, so a Redis outage never loses a task.
 """
@@ -60,6 +60,9 @@ async def run_task(ctx, task_id):
     try:
         task, media = await asyncio.to_thread(_load, ctx['engine'], task_id)
         log_task_event('claimed', task_id=task.id, task_type=task.type, attempts=attempt)
+        if task.type in ('avatar_batch', 'motion_batch') and (
+                ctx['image_provider'] is None or ctx['video_provider'] is None):
+            raise RuntimeError('该任务需要 DASHSCOPE_API_KEY（头像/视频生成暂无智谱实现）')
         if task.type == 'avatar_batch':
             result = await generate_avatar(task, media, assets=ctx['assets'],
                                            image_provider=ctx['image_provider'], video_provider=ctx['video_provider'])
@@ -123,11 +126,22 @@ async def purge_sweep(ctx):
 
 
 def _providers_from_env():
+    """文本 LLM 双源：智谱 glm-4-flash 优先（免费），未配再走 DashScope。
+
+    头像/视频生成只有 DashScope 实现，未配 Key 时对应任务会显式失败，
+    但不再阻断 worker 启动（初筛/音频解读不依赖它们）。
+    """
     from app.providers.dashscope import DashScopeImageProvider, DashScopeLLMProvider, DashScopeVideoProvider
-    key = os.environ.get('DASHSCOPE_API_KEY', '')
-    if not key:
-        raise RuntimeError('DASHSCOPE_API_KEY is required for the worker')
-    return DashScopeImageProvider(key), DashScopeVideoProvider(key), DashScopeLLMProvider(key)
+    from app.providers.zhipu import ZhipuLLMProvider
+    dashscope_key = os.environ.get('DASHSCOPE_API_KEY', '')
+    zhipu_key = os.environ.get('ZHIPU_API_KEY', '')
+    image_provider = DashScopeImageProvider(dashscope_key) if dashscope_key else None
+    video_provider = DashScopeVideoProvider(dashscope_key) if dashscope_key else None
+    llm_provider = (ZhipuLLMProvider(zhipu_key) if zhipu_key
+                    else DashScopeLLMProvider(dashscope_key) if dashscope_key else None)
+    if llm_provider is None:
+        raise RuntimeError('ZHIPU_API_KEY 或 DASHSCOPE_API_KEY 至少配置一个，否则初筛建议只能降级')
+    return image_provider, video_provider, llm_provider
 
 
 async def startup(ctx):
@@ -153,7 +167,8 @@ async def startup(ctx):
         raise RuntimeError('chat.yaml is required for audio interpretation')
     ctx['chat_config'] = chat_config
     from app.providers.dashscope import DashScopeAudioProvider
-    ctx['audio_provider'] = DashScopeAudioProvider(os.environ['DASHSCOPE_API_KEY'])
+    dashscope_key = os.environ.get('DASHSCOPE_API_KEY', '')
+    ctx['audio_provider'] = DashScopeAudioProvider(dashscope_key) if dashscope_key else None
 
 
 async def shutdown(ctx):

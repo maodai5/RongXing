@@ -14,7 +14,8 @@ from typing import Any, Mapping, Optional
 from urllib.parse import urlsplit
 
 from app.core.env import load_env
-from app.providers.dashscope import DashScopeLLMProvider
+from app.providers.dashscope import DashScopeLLMProvider, DashScopeVisionProvider
+from app.providers.zhipu import ZhipuLLMProvider, ZhipuVisionProvider
 from app.services.advice import load_advice_templates
 from app.services.chat import load_chat_config
 from app.services.feeding import load_feeding_config
@@ -44,6 +45,7 @@ class Settings:
     chat_config: Any
     motion_config: Any
     chat_llm_provider: Any
+    vision_provider: Any
     placeholder_library: Any
 
     @classmethod
@@ -77,6 +79,12 @@ class Settings:
         rules_dir = Path(env.get('RULES_DIR') or BACKEND_ROOT / 'rules')
         placeholder_dir = Path(env.get('PLACEHOLDER_DIR') or BACKEND_ROOT / 'assets' / 'placeholders')
         dashscope_key = env.get('DASHSCOPE_API_KEY')
+        zhipu_key = env.get('ZHIPU_API_KEY')
+        # 视觉与聊天 provider 双源：智谱优先（glm-4-flash / glm-4v-flash 免费），未配再走 DashScope
+        vision_provider = (ZhipuVisionProvider(zhipu_key) if zhipu_key
+                           else DashScopeVisionProvider(dashscope_key) if dashscope_key else None)
+        chat_llm_provider = (ZhipuLLMProvider(zhipu_key) if zhipu_key
+                             else DashScopeLLMProvider(dashscope_key, model='qwen-plus') if dashscope_key else None)
         return cls(
             database_url=database_url,
             jwt_secret=jwt_secret,
@@ -89,6 +97,7 @@ class Settings:
             feeding_config=load_feeding_config(rules_dir),
             chat_config=load_chat_config(rules_dir),
             motion_config=load_motion_config(rules_dir),
-            chat_llm_provider=DashScopeLLMProvider(dashscope_key, model='qwen-plus') if dashscope_key else None,
+            chat_llm_provider=chat_llm_provider,
+            vision_provider=vision_provider,
             placeholder_library=load_library(placeholder_dir),
         )

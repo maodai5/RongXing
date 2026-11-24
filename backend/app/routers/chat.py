@@ -3,6 +3,7 @@
 每宠一线程自动创建；上下文=最近 20 条+档案+最新初筛状态；
 红线关键词零 LLM 附就医引导卡；LLM 失败/禁词降级模板安抚，对话不中断。
 """
+import logging
 from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, Query, Request, Response
@@ -14,8 +15,8 @@ from sqlalchemy.orm import Session
 from app.core.db import get_db
 from app.core.errors import APIError
 from app.core.security import utcnow
-from app.services.chat import (build_persona_messages, detect_redline, fallback_reply,
-                      parse_chat_reply, redline_response)
+from app.services.chat import (FORMAT_REMINDER, ChatReplyError, build_persona_messages, detect_redline,
+                      fallback_reply, parse_chat_reply, redline_response)
 from app.services.idempotency import find_replay, hash_request, validate_key
 from app.models import (AiUsageLog, ChatMessage, ChatSession, HealthScreening, MediaUpload, Pet,
                         RequestIdempotency, Task, User)
@@ -24,6 +25,7 @@ from app.services.quota import quota_gate
 from app.services.tasks import enqueue_task
 
 router = APIRouter(prefix='/api/v1', tags=['chat'])
+logger = logging.getLogger('rongxing.chat')
 
 
 def chat_config(request: Request) -> dict:
@@ -213,12 +215,22 @@ async def send_message(sid: int, body: MessageInput, request: Request, response:
             messages = build_persona_messages(pet_profile, latest.state if latest else None, history, config)
             try:
                 raw = await provider.chat(messages, temperature=0.7, max_tokens=300)
-                result = {**parse_chat_reply(raw, config), 'source': 'llm'}
+                try:
+                    result = {**parse_chat_reply(raw, config), 'source': 'llm'}
+                except ChatReplyError:
+                    # 修复式重试：携带上一次错误输出，要求仅输出 JSON
+                    retry_messages = messages + [
+                        {'role': 'assistant', 'content': raw[:200] or '（空回复）'},
+                        {'role': 'user', 'content': FORMAT_REMINDER}]
+                    raw = await provider.chat(retry_messages, temperature=0.3, max_tokens=300)
+                    result = {**parse_chat_reply(raw, config), 'source': 'llm'}
                 usage = getattr(provider, 'last_usage', None) or {}
                 db.add(AiUsageLog(user_id=user.id, task_id=None, provider=provider.provider,
                                   model=provider.model, kind='llm',
                                   tokens_in=usage.get('tokens_in'), tokens_out=usage.get('tokens_out')))
             except Exception:
+                logger.exception('chat llm failed, degrading to template; provider=%s model=%s',
+                                 getattr(provider, 'provider', 'unknown'), getattr(provider, 'model', 'unknown'))
                 db.add(AiUsageLog(user_id=user.id, task_id=None,
                                   provider=getattr(provider, 'provider', 'unknown'),
                                   model=getattr(provider, 'model', 'unknown'), kind='llm'))

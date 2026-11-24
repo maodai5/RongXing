@@ -64,3 +64,22 @@ class FakeLLMProvider:
             raise RuntimeError('fake llm failure')
         self.last_usage = {'tokens_in': 100, 'tokens_out': 30}
         return self.reply
+
+
+class FakeVisionProvider:
+    provider = 'fake'
+    model = 'fake-vision'
+
+    def __init__(self, reply: str = '{"observations": ["双眼清亮"], "suggestion": "normal", "summary": "状态良好", "advice": "继续保持"}', *, fail_times: int = 0):
+        self.reply = reply
+        self.fail_times = fail_times
+        self.calls = []
+        self.last_usage = None
+
+    async def analyze(self, photo: bytes, prompt: str, *, mime: str = 'image/jpeg') -> str:
+        self.calls.append({'bytes': len(photo), 'prompt': prompt, 'mime': mime})
+        if self.fail_times > 0:
+            self.fail_times -= 1
+            raise RuntimeError('fake vision failure')
+        self.last_usage = {'tokens_in': 220, 'tokens_out': 60}
+        return self.reply

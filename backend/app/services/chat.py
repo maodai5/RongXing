@@ -25,6 +25,11 @@ class ChatReplyError(ValueError):
     """LLM 输出不可用（格式错误或含禁词），应降级模板。"""
 
 
+FORMAT_REMINDER = ('你上一次的回复不是 JSON。请忘记刚才的输出，'
+                   '严格只输出一个 JSON 对象：{"reply": "一句人设回复", "emotion": "六种情绪之一"}，'
+                   '不要输出表情符号、解释或任何 JSON 以外的内容。')
+
+
 def load_chat_config(directory: Path) -> Optional[dict]:
     path = Path(directory) / 'chat.yaml'
     if not path.is_file():
@@ -104,6 +109,7 @@ def build_persona_messages(pet: dict, screening_state: Optional[str], history: l
         f"只聊日常陪伴与感受,不做诊断、不开处方、不推荐药物;回复严禁出现「确诊」「治疗」「诊断」字样。"
         f"回复不超过{config['reply_max']}字。"
         f"仅输出 JSON:{{\"reply\": \"一句人设回复\", \"emotion\": \"happy/relaxed/annoyed/fearful/painful/seeking_attention 之一\"}}。"
+        f"JSON 之外一个字都不要输出,禁止单独输出表情符号。"
         f"免责边界:{config['disclaimer']}。"
     )
     messages = [{'role': 'system', 'content': system}]
@@ -113,15 +119,52 @@ def build_persona_messages(pet: dict, screening_state: Optional[str], history: l
     return messages
 
 
+def _extract_json_object(text: str) -> Optional[str]:
+    """从夹杂说明文字的输出中截取第一个完整的 JSON 对象。"""
+    start = text.find('{')
+    if start < 0:
+        return None
+    depth = 0
+    in_string = False
+    escape = False
+    for index in range(start, len(text)):
+        char = text[index]
+        if in_string:
+            if escape:
+                escape = False
+            elif char == '\\':
+                escape = True
+            elif char == '"':
+                in_string = False
+            continue
+        if char == '"':
+            in_string = True
+        elif char == '{':
+            depth += 1
+        elif char == '}':
+            depth -= 1
+            if depth == 0:
+                return text[start:index + 1]
+    return None
+
+
 def parse_chat_reply(raw: str, config: dict) -> dict:
     text = _FENCE.sub('', raw or '').strip()
     try:
         data = json.loads(text)
-        reply = data['reply']
-        if not isinstance(reply, str) or not reply.strip():
-            raise ValueError('empty reply')
-    except (ValueError, KeyError, TypeError) as exc:
-        raise ChatReplyError('chat reply is not valid JSON') from exc
+    except (ValueError, TypeError):
+        candidate = _extract_json_object(text)
+        if candidate is None:
+            raise ChatReplyError('chat reply is not valid JSON')
+        try:
+            data = json.loads(candidate)
+        except ValueError as exc:
+            raise ChatReplyError('chat reply is not valid JSON') from exc
+    if not isinstance(data, dict):
+        raise ChatReplyError('chat reply is not a JSON object')
+    reply = data.get('reply')
+    if not isinstance(reply, str) or not reply.strip():
+        raise ChatReplyError('empty reply')
     if any(word in reply for word in FORBIDDEN_WORDS):
         raise ChatReplyError('chat reply contains forbidden words')
     emotion = data.get('emotion')

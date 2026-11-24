@@ -107,6 +107,41 @@ class DashScopeAudioProvider:
             return EmotionResult(emotion, confidence)
 
 
+class DashScopeVisionProvider:
+    """qwen-vl 照片观察分析（视觉初筛参考）。需 DASHSCOPE_API_KEY。"""
+
+    provider = 'dashscope'
+
+    def __init__(self, api_key: str, model: str = 'qwen-vl-max', timeout: float = 60, transport=None):
+        self.api_key = api_key
+        self.model = model
+        self.timeout = timeout
+        self.transport = transport
+        self.last_usage: dict | None = None
+
+    async def analyze(self, photo: bytes, prompt: str, *, mime: str = 'image/jpeg') -> str:
+        encoded = base64.b64encode(photo).decode()
+        payload = {'model': self.model,
+                   'input': {'messages': [{'role': 'user', 'content': [
+                       {'image': f'data:{mime};base64,{encoded}'}, {'text': prompt}]}]},
+                   'parameters': {'result_format': 'message', 'temperature': 0.1}}
+        async with httpx.AsyncClient(timeout=self.timeout, transport=self.transport) as client:
+            response = await client.post(
+                f'{DASHSCOPE_BASE}/services/aigc/multimodal-generation/generation',
+                json=payload, headers={'Authorization': f'Bearer {self.api_key}'})
+            data = response.json()
+            if response.status_code != 200:
+                raise DashScopeError(f'vision analyze failed: {data}')
+            try:
+                parts = data['output']['choices'][0]['message']['content']
+                text = next(part['text'] for part in parts if 'text' in part)
+            except (KeyError, IndexError, TypeError, StopIteration) as exc:
+                raise DashScopeError(f'vision analyze returned no text: {data}') from exc
+            usage = data.get('usage') or {}
+            self.last_usage = {'tokens_in': usage.get('input_tokens'), 'tokens_out': usage.get('output_tokens')}
+            return text
+
+
 class DashScopeVideoProvider:
     def __init__(self, api_key: str, model: str = 'wanx2.1-i2v-turbo', timeout: float = 120,
                  poll_seconds: float = 5, max_wait_seconds: float = 480):
