@@ -17,6 +17,7 @@ class User(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     nickname: Mapped[str] = mapped_column(String(64))
     status: Mapped[str] = mapped_column(String(16), default='active')
+    role: Mapped[str] = mapped_column(String(16), default='user', server_default='user', nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.current_timestamp())
     deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 

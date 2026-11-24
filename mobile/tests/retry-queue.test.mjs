@@ -36,8 +36,14 @@ test('classifyFailure: network errors and 5xx/408/429 retry', () => {
   assert.equal(classifyFailure({ status: 429 }), 'retry');
 });
 
+test('classifyFailure: expired token keeps the item for retry', () => {
+  for (const status of [401, 403]) {
+    assert.equal(classifyFailure({ status, message: 'x' }), 'retry');
+  }
+});
+
 test('classifyFailure: other 4xx drop', () => {
-  for (const status of [400, 401, 403, 404, 409, 422]) {
+  for (const status of [400, 404, 409, 422]) {
     assert.equal(classifyFailure({ status, message: 'x' }), 'drop');
   }
 });
@@ -108,4 +114,39 @@ test('parseDietBody reads fields and falls back fed_at to createdAt', () => {
   assert.equal(parsed.fed_at, new Date(Date.UTC(2026, 10, 19, 8)).toISOString());
   const explicit = parseDietBody(item({ body: '{"food_type":"dry","amount_g":50,"fed_at":"2026-11-19T00:00:00Z"}' }));
   assert.equal(explicit.fed_at, '2026-11-19T00:00:00Z');
+});
+
+test('drainQueue does not bump when remove fails after a successful send', async () => {
+  const store = memoryStore([item()]);
+  store.remove = async () => { throw new Error('disk full'); };
+  const result = await drainQueue(store, async () => {});
+  assert.equal(result.synced, 1);
+  assert.equal(store.rows[0].attempts, 0);
+});
+
+test('drainQueue drops a repeatedly failing 5xx once the attempt budget is spent', async () => {
+  const store = memoryStore([item({ attempts: 7 })]);
+  const result = await drainQueue(store, async () => { throw Object.assign(new Error('boom'), { status: 500 }); });
+  assert.equal(result.synced, 0);
+  assert.equal(result.dropped.length, 1);
+  assert.equal(result.dropped[0].error, 'boom');
+  assert.equal(store.rows.length, 0);
+});
+
+test('drainQueue never drops a pure network failure, however many attempts', async () => {
+  const store = memoryStore([item({ attempts: 99 })]);
+  const result = await drainQueue(store, async () => { throw new TypeError('offline'); });
+  assert.equal(result.stopped, true);
+  assert.equal(store.rows.length, 1);
+  assert.equal(store.rows[0].attempts, 100);
+});
+
+test('drainQueue shares one in-flight run per store', async () => {
+  const store = memoryStore([item()]);
+  let sends = 0;
+  const send = async () => { sends += 1; await new Promise(resolve => setTimeout(resolve, 20)); };
+  const [a, b] = await Promise.all([drainQueue(store, send), drainQueue(store, send)]);
+  assert.equal(sends, 1);
+  assert.equal(a.synced, 1);
+  assert.equal(b.synced, 1);
 });

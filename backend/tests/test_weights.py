@@ -109,6 +109,12 @@ class WeightAPITests(WeightFixture, TestCase):
         self.assertEqual(resp.status_code, 400)
         self.assertIn('weight_kg', [f['field'] for f in resp.json()['detail']['fields']])
 
+    def test_extreme_value_rejected_as_validation_error(self):
+        resp = self.post_weight({'weight_kg': 1e30})
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(resp.json()['code'], 'VALIDATION_ERROR')
+        self.assertIn('weight_kg', [f['field'] for f in resp.json()['detail']['fields']])
+
     def test_extra_field_rejected(self):
         self.assertEqual(self.post_weight({'weight_kg': 4.0, 'note': 'x'}).status_code, 400)
 

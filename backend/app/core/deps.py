@@ -55,6 +55,12 @@ def consented_user(request: Request, user: User = Depends(current_user), db: Ses
     return user
 
 
+def admin_user(user: User = Depends(current_user)) -> User:
+    if user.role != 'admin':
+        raise APIError(403, 'ADMIN_REQUIRED', '仅管理员可执行此操作')
+    return user
+
+
 def owned_pet(pet_id: int, user: User = Depends(consented_user), db: Session = Depends(get_db)):
     try:
         return get_pet(db, user.id, pet_id)

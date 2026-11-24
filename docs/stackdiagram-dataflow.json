@@ -1,0 +1,45 @@
+{
+  "title": "绒星 2.0 — 数字分身初筛主链路 (dataflow)",
+  "view": "dataflow",
+  "nodes": [
+    {"id": "pet_create", "type": "client", "label": "1. 建立宠物档案", "tech": "mobile/(tabs)/index",
+     "note": "填写基础信息与体重，档案入库后才有资格建分身"},
+    {"id": "avatar_gen", "type": "service", "label": "2. 生成数字分身形象", "tech": "avatar / dashscope qwen-image-edit",
+     "note": "上传照片生成形象；三级回退保证失败也有占位片可播"},
+    {"id": "symptom_input", "type": "client", "label": "3. 填写症状清单", "tech": "screening/[petId]",
+     "note": "从规则包定义的症状项中勾选，可补充文字描述"},
+    {"id": "triage_hit", "type": "function", "label": "4. 红线硬判定", "tech": "triage.py + rules/redlines.yaml",
+     "note": "先判 urgent 与 vet 档，命中直接出「建议立即就医」卡，不占配额、不经 LLM"},
+    {"id": "urgent_card", "type": "client", "label": "5a. 立即就医卡", "tech": "screening/result",
+     "note": "红线结果不弱化表达，情感互动不得削弱安全提示"},
+    {"id": "advice_gen", "type": "service", "label": "5b. AI 建议生成", "tech": "advice.py + dashscope qwen-max",
+     "note": "非红线部分才消耗分身与聊天配额，输出饮食与观察建议"},
+    {"id": "score", "type": "function", "label": "6. 健康分与观察窗", "tech": "health.py",
+     "note": "健康分读时衰减，observe 观察窗口 72 小时"},
+    {"id": "archive", "type": "database", "label": "7. 存档与时间线", "tech": "MySQL + timeline/[petId]",
+     "note": "初筛结果、健康分、饮食与体重全部落库，形成可回溯的健康时间线"},
+    {"id": "daily_care", "type": "client", "label": "8. 日常陪伴闭环", "tech": "chat / diet / weight / feeding",
+     "note": "聊天、叫声解读、喂食提醒与体重曲线回写时间线"},
+    {"id": "motion_task", "type": "queue", "label": "附: 动图生成任务", "tech": "tasks.py → arq → worker",
+     "note": "分身生成后可派生 12 个动作动图，异步跑不影响主链路"}
+  ],
+  "edges": [
+    {"from": "pet_create", "to": "avatar_gen", "label": "档案就绪后触发", "step": 1},
+    {"from": "avatar_gen", "to": "symptom_input", "label": "形象可用，进入建档流程", "step": 2},
+    {"from": "symptom_input", "to": "triage_hit", "label": "提交症状，走规则初筛", "step": 3},
+    {"from": "triage_hit", "to": "urgent_card", "label": "命中红线：立即就医，绝不经 LLM", "step": 4},
+    {"from": "triage_hit", "to": "advice_gen", "label": "未命中红线：交给 AI 生成建议", "step": 4},
+    {"from": "advice_gen", "to": "score", "label": "建议附观察要点", "step": 5},
+    {"from": "urgent_card", "to": "archive", "label": "红线命中记录存档", "step": 6},
+    {"from": "score", "to": "archive", "label": "健康分与观察窗落库", "step": 6},
+    {"from": "archive", "to": "daily_care", "label": "时间线驱动日常陪伴", "step": 7},
+    {"from": "daily_care", "to": "archive", "label": "饮食、体重、对话回写时间线", "step": 8},
+    {"from": "avatar_gen", "to": "motion_task", "label": "形象定稿后派生动图任务", "step": 2}
+  ],
+  "groups": [
+    {"id": "g_client_flow", "label": "客户端 (Expo)", "children": ["pet_create", "symptom_input", "urgent_card", "daily_care"]},
+    {"id": "g_backend_flow", "label": "后端 FastAPI", "children": ["avatar_gen", "triage_hit", "advice_gen", "score"]},
+    {"id": "g_store_flow", "label": "事实源", "children": ["archive"]},
+    {"id": "g_async_flow", "label": "异步旁路", "children": ["motion_task"]}
+  ]
+}

@@ -165,7 +165,7 @@ def refresh(data: RefreshInput, request: Request, response: Response, db: Sessio
 @router.get('/me')
 def me(response: Response, user: User = Depends(current_user)):
     response.headers['Cache-Control'] = 'no-store'
-    return {'id': user.id, 'nickname': user.nickname}
+    return {'id': user.id, 'nickname': user.nickname, 'role': user.role}
 
 
 @router.delete('/me', status_code=202)

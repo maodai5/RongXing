@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>绒星 2.0 · 数字分身初筛主链路</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#F2EADB;color:#3A3831;
+ font:13px/1.6 -apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
+.wrap{max-width:1560px;margin:0 auto;padding:36px 32px 72px}
+header{border-bottom:1px solid #B7B3A6;padding-bottom:20px;margin-bottom:26px}
+h1{font-size:18px;font-weight:500;margin:0 0 8px;letter-spacing:.2px}
+.sub{color:#6B6A62;font-size:13px;max-width:920px}
+.meta{color:#6B6A62;font-size:12px;margin-top:12px;display:flex;gap:20px;flex-wrap:wrap}
+.meta b{font-weight:500;color:#3A3831}
+.bar{display:flex;gap:10px;align-items:center;margin:0 0 22px}
+button{font:inherit;font-size:12px;color:#3A3831;background:transparent;
+ border:1px dashed #8F8D84;border-radius:7px;padding:6px 13px;cursor:pointer}
+button[aria-pressed="false"]{color:#6B6A62;border-color:#B7B3A6}
+button:hover{border-color:#3A3831}
+.scroll{overflow-x:auto;border:1px solid #B7B3A6;border-radius:12px;
+ padding:6px;background:#F2EADB}
+svg text{font-family:inherit}
+svg .tt{font-size:13px;font-weight:500;fill:#3A3831}
+svg .bl{font-size:12px;font-weight:500;fill:#6B6A62;letter-spacing:.5px}
+svg .tech{font-size:11px;fill:#6B6A62;font-family:ui-monospace,Menlo,Consolas,monospace}
+svg .note{font-size:11px;fill:#6B6A62}
+body.no-notes svg .note{display:none}
+section{margin-top:30px}
+h2{font-size:14px;font-weight:500;margin:0 0 12px}
+table{border-collapse:collapse;width:100%;font-size:12px;
+ background:#FFFDF6;border:1px solid #B7B3A6;border-radius:10px}
+th,td{text-align:left;padding:7px 12px;border-bottom:1px solid #E4DDCB;vertical-align:top}
+th{color:#6B6A62;font-weight:500}
+tr:last-child td{border-bottom:none}
+td.a{white-space:nowrap} td.b{white-space:nowrap} td.arrow{color:#6B6A62;width:18px}
+td.l{color:#6B6A62}
+footer{margin-top:40px;color:#6B6A62;font-size:12px;
+ border-top:1px solid #B7B3A6;padding-top:16px}
+</style></head><body>
+<div class="wrap">
+<header>
+<h1>绒星 2.0 · 数字分身初筛主链路</h1>
+<div class="sub">从建档到日常陪伴的完整数据流：红线命中直接出「建议立即就医」卡，不占配额、绝不经 LLM；未命中才消耗配额走 AI 建议。</div>
+<div class="meta">
+<span><b>10</b> 个组件</span><span><b>11</b> 条调用关系</span>
+<span><b>4</b> 个部署边界</span><span>来源 <b>docs/stackdiagram-dataflow.json</b></span>
+</div>
+</header>
+
+<div class="bar">
+<button id="t-notes" aria-pressed="true">隐藏组件说明</button>
+<button id="t-list" aria-pressed="false">展开连线说明</button>
+</div>
+
+<div class="scroll"><svg viewBox="0 0 918 968" width="100%" role="img" aria-labelledby="dgTitle dgDesc" xmlns="http://www.w3.org/2000/svg"><title id="dgTitle">绒星 2.0 · 数字分身初筛主链路</title><desc id="dgDesc">按边界排布的 10 个组件，共 11 条调用关系。</desc><defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M2 1.5L8.5 5L2 8.5" fill="none" stroke="#8A8577" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></marker></defs><g class="bands"><rect x="36" y="20" width="250" height="530" rx="10" fill="#F8F2E4" stroke="#B7B3A6" stroke-width="1" stroke-dasharray="5 4"/><rect x="334" y="20" width="250" height="658" rx="10" fill="#F8F2E4" stroke="#B7B3A6" stroke-width="1" stroke-dasharray="5 4"/><rect x="632" y="20" width="250" height="170" rx="10" fill="#F8F2E4" stroke="#B7B3A6" stroke-width="1" stroke-dasharray="5 4"/><rect x="632" y="750" width="250" height="170" rx="10" fill="#F8F2E4" stroke="#B7B3A6" stroke-width="1" stroke-dasharray="5 4"/></g><text class="bl" x="56" y="41">客户端 (Expo)</text><text class="bl" x="354" y="41">后端 FastAPI</text><text class="bl" x="652" y="41">事实源</text><text class="bl" x="652" y="771">异步旁路</text><g class="edges"><path d="M 266 122 C 306 122 314 138 354 138" fill="none" stroke="#8A8577" stroke-width="1" marker-end="url(#ah)"><title>1. 建立宠物档案 → 2. 生成数字分身形象：档案就绪后触发</title></path><path d="M 564 138 C 594 198 26 302 56 242" fill="none" stroke="#8A8577" stroke-width="1" marker-end="url(#ah)"><title>2. 生成数字分身形象 → 3. 填写症状清单：形象可用，进入建档流程</title></path><path d="M 266 242 C 306 242 314 290 354 290" fill="none" stroke="#8A8577" stroke-width="1" marker-end="url(#ah)"><title>3. 填写症状清单 → 4. 红线硬判定：提交症状，走规则初筛</title></path><path d="M 564 290 C 594 350 26 422 56 362" fill="none" stroke="#8A8577" stroke-width="1" marker-end="url(#ah)"><title>4. 红线硬判定 → 5a. 立即就医卡：命中红线：立即就医，绝不经 LLM</title></path><path d="M 564 290 C 594 350 324 502 354 442" fill="none" stroke="#8A8577" stroke-width="1" marker-end="url(#ah)"><title>4. 红线硬判定 → 5b. AI 建议生成：未命中红线：交给 AI 生成建议</title></path><path d="M 564 442 C 594 502 324 654 354 594" fill="none" stroke="#8A8577" stroke-width="1" marker-end="url(#ah)"><title>5b. AI 建议生成 → 6. 健康分与观察窗：建议附观察要点</title></path><path d="M 266 362 C 440 362 478 122 652 122" fill="none" stroke="#8A8577" stroke-width="1" marker-end="url(#ah)"><title>5a. 立即就医卡 → 7. 存档与时间线：红线命中记录存档</title></path><path d="M 564 594 C 604 594 612 122 652 122" fill="none" stroke="#8A8577" stroke-width="1" marker-end="url(#ah)"><title>6. 健康分与观察窗 → 7. 存档与时间线：健康分与观察窗落库</title></path><path d="M 862 122 C 892 182 26 542 56 482" fill="none" stroke="#8A8577" stroke-width="1" marker-end="url(#ah)"><title>7. 存档与时间线 → 8. 日常陪伴闭环：时间线驱动日常陪伴</title></path><path d="M 266 482 C 440 482 478 122 652 122" fill="none" stroke="#8A8577" stroke-width="1" marker-end="url(#ah)"><title>8. 日常陪伴闭环 → 7. 存档与时间线：饮食、体重、对话回写时间线</title></path><path d="M 459 202 C 459 503 757 503 757 804" fill="none" stroke="#8A8577" stroke-width="1" marker-end="url(#ah)"><title>2. 生成数字分身形象 → 附: 动图生成任务：形象定稿后派生动图任务</title></path></g><g class="nodes"><g class="node"><title>1. 建立宠物档案
+mobile/(tabs)/index
+填写基础信息与体重，档案入库后才有资格建分身</title><rect x="56" y="74" width="210" height="96" rx="7" fill="#FFFDF6" stroke="#8F8D84" stroke-width="1" stroke-dasharray="4 3"/><text class="tt" x="68" y="96">1. 建立宠物档案</text><text class="tech" x="68" y="114">mobile/(tabs)/index</text><text class="note" x="68" y="135">填写基础信息与体重，档案入库后才</text><text class="note" x="68" y="151">有资格建分身</text></g><g class="node"><title>3. 填写症状清单
+screening/[petId]
+从规则包定义的症状项中勾选，可补充文字描述</title><rect x="56" y="194" width="210" height="96" rx="7" fill="#FFFDF6" stroke="#8F8D84" stroke-width="1" stroke-dasharray="4 3"/><text class="tt" x="68" y="216">3. 填写症状清单</text><text class="tech" x="68" y="234">screening/[petId]</text><text class="note" x="68" y="255">从规则包定义的症状项中勾选，可补</text><text class="note" x="68" y="271">充文字描述</text></g><g class="node"><title>5a. 立即就医卡
+screening/result
+红线结果不弱化表达，情感互动不得削弱安全提示</title><rect x="56" y="314" width="210" height="96" rx="7" fill="#FFFDF6" stroke="#8F8D84" stroke-width="1" stroke-dasharray="4 3"/><text class="tt" x="68" y="336">5a. 立即就医卡</text><text class="tech" x="68" y="354">screening/result</text><text class="note" x="68" y="375">红线结果不弱化表达，情感互动不得</text><text class="note" x="68" y="391">削弱安全提示</text></g><g class="node"><title>8. 日常陪伴闭环
+chat / diet / weight / feeding
+聊天、叫声解读、喂食提醒与体重曲线回写时间线</title><rect x="56" y="434" width="210" height="96" rx="7" fill="#FFFDF6" stroke="#8F8D84" stroke-width="1" stroke-dasharray="4 3"/><text class="tt" x="68" y="456">8. 日常陪伴闭环</text><text class="tech" x="68" y="474">chat / diet / weight / feeding</text><text class="note" x="68" y="495">聊天、叫声解读、喂食提醒与体重曲</text><text class="note" x="68" y="511">线回写时间线</text></g></g><g class="nodes"><g class="node"><title>2. 生成数字分身形象
+avatar / dashscope qwen-image-edit
+上传照片生成形象；三级回退保证失败也有占位片可播</title><rect x="354" y="74" width="210" height="128" rx="7" fill="#FFFDF6" stroke="#8F8D84" stroke-width="1" stroke-dasharray="4 3"/><text class="tt" x="366" y="96">2. 生成数字分身形象</text><text class="tech" x="366" y="114">avatar / dashscope</text><text class="tech" x="366" y="130">qwen-image-edit</text><text class="note" x="366" y="151">上传照片生成形象；三级回退保证失</text><text class="note" x="366" y="167">败也有占位片可播</text></g><g class="node"><title>4. 红线硬判定
+triage.py + rules/redlines.yaml
+先判 urgent 与 vet 档，命中直接出「建议立即就医」卡，不占配额、不经 LLM</title><rect x="354" y="226" width="210" height="128" rx="7" fill="#FFFDF6" stroke="#8F8D84" stroke-width="1" stroke-dasharray="4 3"/><text class="tt" x="366" y="248">4. 红线硬判定</text><text class="tech" x="366" y="266">triage.py +</text><text class="tech" x="366" y="282">rules/redlines.yaml</text><text class="note" x="366" y="303">先判 urgent 与 vet 档，命中直接</text><text class="note" x="366" y="319">出「建议立即就医」卡，不占配额、</text><text class="note" x="366" y="335">不经 LLM</text></g><g class="node"><title>5b. AI 建议生成
+advice.py + dashscope qwen-max
+非红线部分才消耗分身与聊天配额，输出饮食与观察建议</title><rect x="354" y="378" width="210" height="128" rx="7" fill="#FFFDF6" stroke="#8F8D84" stroke-width="1" stroke-dasharray="4 3"/><text class="tt" x="366" y="400">5b. AI 建议生成</text><text class="tech" x="366" y="418">advice.py + dashscope qwen-max</text><text class="note" x="366" y="439">非红线部分才消耗分身与聊天配额，</text><text class="note" x="366" y="455">输出饮食与观察建议</text></g><g class="node"><title>6. 健康分与观察窗
+health.py
+健康分读时衰减，observe 观察窗口 72 小时</title><rect x="354" y="530" width="210" height="128" rx="7" fill="#FFFDF6" stroke="#8F8D84" stroke-width="1" stroke-dasharray="4 3"/><text class="tt" x="366" y="552">6. 健康分与观察窗</text><text class="tech" x="366" y="570">health.py</text><text class="note" x="366" y="591">健康分读时衰减，observe 观察窗口</text><text class="note" x="366" y="607">72 小时</text></g></g><g class="nodes"><g class="node"><title>7. 存档与时间线
+MySQL + timeline/[petId]
+初筛结果、健康分、饮食与体重全部落库，形成可回溯的健康时间线</title><rect x="652" y="74" width="210" height="96" rx="7" fill="#FFFDF6" stroke="#8F8D84" stroke-width="1" stroke-dasharray="4 3"/><text class="tt" x="664" y="96">7. 存档与时间线</text><text class="tech" x="664" y="114">MySQL + timeline/[petId]</text><text class="note" x="664" y="135">初筛结果、健康分、饮食与体重全部</text><text class="note" x="664" y="151">落库，形成可回溯的健康时间线</text></g></g><g class="nodes"><g class="node"><title>附: 动图生成任务
+tasks.py → arq → worker
+分身生成后可派生 12 个动作动图，异步跑不影响主链路</title><rect x="652" y="804" width="210" height="96" rx="7" fill="#FFFDF6" stroke="#8F8D84" stroke-width="1" stroke-dasharray="4 3"/><text class="tt" x="664" y="826">附: 动图生成任务</text><text class="tech" x="664" y="844">tasks.py → arq → worker</text><text class="note" x="664" y="865">分身生成后可派生 12 个动作动图，</text><text class="note" x="664" y="881">异步跑不影响主链路</text></g></g></svg></div>
+
+<section id="conns" hidden>
+<h2>连线说明</h2>
+<table><thead><tr><th>来源</th><th></th><th>目标</th><th>说明</th></tr></thead>
+<tbody><tr><td class="a">1. 建立宠物档案</td><td class="arrow">→</td><td class="b">2. 生成数字分身形象</td><td class="l">档案就绪后触发</td></tr><tr><td class="a">2. 生成数字分身形象</td><td class="arrow">→</td><td class="b">3. 填写症状清单</td><td class="l">形象可用，进入建档流程</td></tr><tr><td class="a">3. 填写症状清单</td><td class="arrow">→</td><td class="b">4. 红线硬判定</td><td class="l">提交症状，走规则初筛</td></tr><tr><td class="a">4. 红线硬判定</td><td class="arrow">→</td><td class="b">5a. 立即就医卡</td><td class="l">命中红线：立即就医，绝不经 LLM</td></tr><tr><td class="a">4. 红线硬判定</td><td class="arrow">→</td><td class="b">5b. AI 建议生成</td><td class="l">未命中红线：交给 AI 生成建议</td></tr><tr><td class="a">5b. AI 建议生成</td><td class="arrow">→</td><td class="b">6. 健康分与观察窗</td><td class="l">建议附观察要点</td></tr><tr><td class="a">5a. 立即就医卡</td><td class="arrow">→</td><td class="b">7. 存档与时间线</td><td class="l">红线命中记录存档</td></tr><tr><td class="a">6. 健康分与观察窗</td><td class="arrow">→</td><td class="b">7. 存档与时间线</td><td class="l">健康分与观察窗落库</td></tr><tr><td class="a">7. 存档与时间线</td><td class="arrow">→</td><td class="b">8. 日常陪伴闭环</td><td class="l">时间线驱动日常陪伴</td></tr><tr><td class="a">8. 日常陪伴闭环</td><td class="arrow">→</td><td class="b">7. 存档与时间线</td><td class="l">饮食、体重、对话回写时间线</td></tr><tr><td class="a">2. 生成数字分身形象</td><td class="arrow">→</td><td class="b">附: 动图生成任务</td><td class="l">形象定稿后派生动图任务</td></tr></tbody></table>
+</section>
+
+<footer>节点 hover 可看完整说明；连线 hover 可看来源、目标与说明。内容与 stackdiagram 文档逐字一致，仅重排呈现。</footer>
+</div>
+<script>
+var b1=document.getElementById('t-notes'),b2=document.getElementById('t-list'),
+    s=document.getElementById('conns');
+b1.onclick=function(){var on=document.body.classList.toggle('no-notes');
+ b1.textContent=on?'显示组件说明':'隐藏组件说明';b1.setAttribute('aria-pressed',String(!on));};
+b2.onclick=function(){var on=s.hasAttribute('hidden');if(on)s.removeAttribute('hidden');else s.setAttribute('hidden','');
+ b2.textContent=on?'收起连线说明':'展开连线说明';b2.setAttribute('aria-pressed',String(on));};
+</script>
+</body></html>

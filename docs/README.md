@@ -25,7 +25,7 @@
 | [design.md](design.md) | 设计令牌、组件、状态卡与动效规范 | 视觉规范变化 |
 | [features.md](features.md) | 当前功能行为、可选服务联调、本地 API 范围 | 功能交付/接口变化 |
 | [operations.md](operations.md) | 环境变量、日志与脱敏、迁移/备份、告警、回归矩阵 | 运维流程变化 |
-| [collaboration.md](collaboration.md) | 分支模型、PR 门禁、评审清单、发布与版本约定 | 协作方式或流程变化 |
+| [collaboration.md](collaboration.md) | 分支、提交、合并门禁、发布与管理员验收步骤 | 协作方式或流程变化 |
 | [plans/](plans/) | 历史任务拆分与执行记录（按日期归档） | 只追加，不回填 |
 
 ## 维护约定

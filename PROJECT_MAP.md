@@ -52,6 +52,7 @@
 - 测试：`backend/tests/` 43 文件，unittest + 临时 SQLite + TestClient，**无 conftest.py**。`python -m pytest -q` 或 `python -m unittest discover -s tests`。
 - 启动：`cd backend && uvicorn app.main:create_dev_app --factory --host 127.0.0.1 --port 8000`。全栈用 `docker compose up --build -d`（MySQL/Redis/migrate/api/worker）。
 - 演示数据：`python -m scripts.seed_demo` → demo@rongxing.app / Rongxing2026（幂等，重置密码）。
+- 管理员账号：`python -m scripts.create_admin` → admin@rongxing.app / Rongxing2026（幂等，提升 role=admin 并重置密码）。
 - 坑：upsert 双方言 `quota.py:47-52`/`tasks.py:23-26`；`with_for_update()` 在 SQLite 空操作；rules_version 拼接 ≤32 字符；媒体校验依赖系统 ffprobe；S3 桶无版本控制则上传确认全失败；worker 启动强依赖 DASHSCOPE_API_KEY + MEDIA_S3_* + 两个 YAML。
 
 ## 前端速查（mobile/，85 源文件）

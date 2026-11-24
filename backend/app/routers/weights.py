@@ -3,6 +3,7 @@
 录入 0.1–30kg、精度 0.01kg；时间默认现在、可回改任意过去（未来容忍 60s）；
 同日多次全部保留。GET 返回最近记录（倒序）与 90 天趋势点＋骤变提示。
 """
+import math
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Optional
@@ -44,11 +45,13 @@ def create_weight(pet_id: int, body: WeightInput, response: Response,
     pet = owned_pet(pet_id, user, db)
     now = utcnow()
     fields = []
-    if not 0.1 <= body.weight_kg <= 30:
+    value = None
+    if not math.isfinite(body.weight_kg) or not 0.1 <= body.weight_kg <= 30:
         fields.append({'field': 'weight_kg', 'message': '体重需在 0.1–30kg 之间'})
-    value = Decimal(str(body.weight_kg))
-    if value != value.quantize(CENT):
-        fields.append({'field': 'weight_kg', 'message': '体重最多保留 2 位小数（精度 0.01kg）'})
+    else:
+        value = Decimal(str(body.weight_kg))
+        if value != value.quantize(CENT):
+            fields.append({'field': 'weight_kg', 'message': '体重最多保留 2 位小数（精度 0.01kg）'})
     measured_at = body.measured_at
     if measured_at is not None:
         if measured_at.tzinfo is not None:
@@ -59,6 +62,7 @@ def create_weight(pet_id: int, body: WeightInput, response: Response,
         measured_at = now
     if fields:
         raise APIError(400, 'VALIDATION_ERROR', '记录内容校验未通过', {'fields': fields})
+    assert value is not None
     record = WeightRecord(pet_id=pet.id, weight_kg=float(value.quantize(CENT)), measured_at=measured_at)
     db.add(record)
     db.commit()

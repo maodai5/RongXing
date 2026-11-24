@@ -39,6 +39,9 @@ const STATE_HINTS: Record<string, string> = {
   observe: '建议观察精神与食欲变化，按时复查。',
   vet: '建议尽快安排就医检查。',
 };
+// 未登录首页的萌宠位：待机动图（底色已与 heroBg 对齐）优先，GIF 解码失败退回静态插画。
+const WELCOME_CAT_MOTION = require('../../../assets/motion/idle.gif');
+const WELCOME_CAT_STILL = require('../../../assets/figma/59f10c90466cfa3aa84c0f88478dccedc8f69565.png');
 
 function greeting(): string {
   const hour = new Date().getHours();
@@ -59,6 +62,7 @@ export default function HomeScreen() {
   const [showDeductions, setShowDeductions] = useState(false);
   const [emotionEvent, setEmotionEvent] = useState<{ id: string; petId: number; emotion: string } | null>(null);
   const [quota, setQuota] = useState<QuotaSnapshot>();
+  const [catMotionFailed, setCatMotionFailed] = useState(false);
   // F09-5：聊聊页回复情绪→仅当前选中猫的分身播一次对应动作后回待机。
   useEffect(() => emotionBus.subscribe(event => setEmotionEvent({ id: String(event.id), petId: event.petId, emotion: event.emotion })), []);
   const selected = pets.find(pet => pet.id === selectedId) ?? pets[0];
@@ -254,7 +258,8 @@ export default function HomeScreen() {
               <Text style={styles.welcomeTitle}>{'用爱守护\n它的每一天'}</Text>
               <Text style={styles.welcomeSubtitle}>从一份猫咪档案开始</Text>
             </View>
-            <Image source={require('../../../assets/figma/59f10c90466cfa3aa84c0f88478dccedc8f69565.png')}
+            <Image source={catMotionFailed ? WELCOME_CAT_STILL : WELCOME_CAT_MOTION}
+              onError={() => setCatMotionFailed(true)}
               accessible={false} style={styles.welcomeCat} resizeMode="contain" />
           </View>
           <View style={styles.profileState}>
@@ -330,7 +335,7 @@ const styles = StyleSheet.create({
   welcomeCopy: { flex: 1, paddingVertical: spacing.s5 },
   welcomeTitle: { ...typography.pageTitle, color: colors.onBrand },
   welcomeSubtitle: { ...typography.caption, color: colors.secondary, marginTop: spacing.s2 },
-  welcomeCat: { width: '42%', maxWidth: 146, height: 176, alignSelf: 'flex-end' },
+  welcomeCat: { width: '44%', maxWidth: 168, aspectRatio: 1, alignSelf: 'flex-end' },
   profileState: { paddingHorizontal: spacing.s5, paddingVertical: spacing.s4, backgroundColor: colors.surfaceRaised, borderRadius: radius.lg },
   stateTitle: { ...typography.sectionTitle, color: colors.text },
   stateDetail: { ...typography.caption, color: colors.secondary, marginTop: spacing.s1 },

@@ -73,7 +73,7 @@ class AuthAPITests(AuthAPIFixture, unittest.TestCase):
         self.assertEqual(claims['exp'] - claims['iat'], 1800)
         profile = self.me(tokens['access_token'])
         self.assertEqual(profile.status_code, 200)
-        self.assertEqual(profile.json(), {'id': int(claims['sub']), 'nickname': '猫咪主人'})
+        self.assertEqual(profile.json(), {'id': int(claims['sub']), 'nickname': '猫咪主人', 'role': 'user'})
 
     def test_email_verification_hint_requires_correct_password(self):
         for email, password, code in (

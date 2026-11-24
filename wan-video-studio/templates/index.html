@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="zh-CN" data-page="studio">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="page-type" content="software">
+  <meta name="site-kind" content="software">
+  <title>绒星 · 动作工作台</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='studio.css') }}">
+  <script defer src="{{ url_for('static', filename='studio.js') }}"></script>
+</head>
+<body>
+  <header class="top">
+    <div class="shell top-inner">
+      <a class="brand" href="./">绒星<em>动作工作台</em></a>
+      <p class="top-meta"><span>Wan 3.0</span><span>3 秒 · 720P</span></p>
+    </div>
+  </header>
+
+  <main class="shell">
+    <section class="hero" data-enter>
+      <p class="eyebrow">宠物数字分身</p>
+      <h1>把它的照片，<br><span>变成一个会动的小家伙。</span></h1>
+      <p class="lede">上传一张宠物照片，工作台按系统提示词把它重绘成 2.5D 角色立绘。确认形象后，再选一个动作，生成 {{ duration }} 秒视频。</p>
+    </section>
+
+    <div class="workspace">
+      <form class="controls" id="studio" method="post" action="{{ url_for('submit') }}" enctype="multipart/form-data" data-ready="{{ 'true' if ready else 'false' }}" data-portrait-ready="{{ 'true' if portrait_ready else 'false' }}">
+        <fieldset class="steps" id="inputs">
+          <section class="step-card">
+            <div class="step-head">
+              <span class="num">01</span>
+              <h2>上传照片</h2>
+              <span class="step-state" id="upload-state">待上传</span>
+            </div>
+            <label class="drop" id="drop">
+              <input type="file" id="image" name="image" accept="image/jpeg,image/png,image/webp,image/bmp,.jpg,.jpeg,.png,.webp,.bmp" required>
+              <span class="drop-art" aria-hidden="true">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16.5V19a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-2.5"/><path d="M12 4v10"/><path d="m8 8 4-4 4 4"/></svg>
+              </span>
+              <span class="drop-copy">
+                <strong id="drop-title">点击选择，或把照片拖进来</strong>
+                <small id="drop-hint">JPG / PNG / WebP / BMP · 不超过 10 MB · 尽量拍全身</small>
+              </span>
+              <img id="upload-thumb" alt="" hidden>
+            </label>
+          </section>
+
+          <section class="step-card">
+            <div class="step-head">
+              <span class="num">02</span>
+              <h2>生成 2.5D 形象</h2>
+              <span class="step-state" id="portrait-state">未生成</span>
+            </div>
+            <label class="field" for="pet-desc">
+              <span>补充描述 <i>可选</i></span>
+              <textarea id="pet-desc" maxlength="200" rows="2" placeholder="比如：耳朵尖有一撮白毛，浅蓝色眼睛，尾巴很蓬松"></textarea>
+            </label>
+            <div class="row">
+              <button type="button" class="primary" id="portrait-generate" disabled>生成形象</button>
+              <span class="hint">约 20–60 秒 · 每次生成按提供方规则计费</span>
+            </div>
+            {% if not portrait_ready %}<p class="setup">请在 .env 填写 WAN_IMAGE_MODEL（生图模型 ID）后重启工作台。</p>{% endif %}
+          </section>
+
+          <section class="step-card">
+            <div class="step-head">
+              <span class="num">03</span>
+              <h2>选择动作</h2>
+              <span class="step-state" id="action-state">待确认形象</span>
+            </div>
+            <div class="actions">
+            {% for key, (title, summary, description) in actions.items() %}
+              <label class="action">
+                <input type="radio" name="action" value="{{ key }}" data-prompt="{{ description }}" data-summary="{{ summary }}" {% if loop.first %}checked{% endif %}>
+                <span>{{ title }}</span>
+              </label>
+            {% endfor %}
+            </div>
+            <p class="action-summary" id="action-summary">{{ actions.idle[1] }}</p>
+            <details class="prompts">
+              <summary>查看动作提示词</summary>
+              <p><span>{{ identity }}</span><span id="action-prompt">{{ actions.idle[2] }}</span></p>
+              <p><strong>反向提示词：</strong>{{ negative }}</p>
+            </details>
+          </section>
+        </fieldset>
+
+        <p class="notice">照片只用于本次生成；确认后的形象与成片会自动保存在本机 <code>state/images/</code>、<code>state/videos/</code>（保留 30 天），也可以随时点「下载图片」「下载 MP4」另存。每提交一次只生成一个任务。</p>
+        {% if not ready %}<p class="setup">请在 .env 填写 Wan 3.0 模型 ID 和 API Key，再重启工作台。</p>{% endif %}
+        <button class="primary wide" id="generate" type="submit" disabled>生成动作视频</button>
+        <noscript><p class="setup">请启用 JavaScript 后使用工作台。</p></noscript>
+      </form>
+
+      <aside class="stage-column">
+        <section class="stage-card" aria-labelledby="preview-title">
+          <div class="stage-head"><h2 id="preview-title">舞台</h2><span id="preview-type">等待照片</span></div>
+          <div class="stage">
+            <div class="empty" id="empty">
+              <svg width="96" height="84" viewBox="0 0 105 87" fill="none" aria-hidden="true">
+                <rect x="18" y="16" width="65" height="53" rx="12" fill="#fffcf4" stroke="#9b8771" stroke-width="1.5" transform="rotate(-8 51 43)"/>
+                <path d="M37 47c0-4 2-8 5-10l-1-12 11 7c3-1 6-1 9 0l9-7v13c3 2 5 6 5 10 0 9-8 14-19 14s-19-5-19-15Z" fill="#f5d7a9" stroke="#75583c" stroke-width="1.5" stroke-linejoin="round"/>
+                <path d="M48 47h.1M64 47h.1m-10 5 2 2 2-2" stroke="#75583c" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M85 5v13m-6.5-6.5h13M11 62v10m-5-5h10m74-9v9m-4.5-4.5h9" stroke="#ad611f" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+              <p>还没有照片</p>
+              <small>先在左侧上传一张宠物照片，生成 2.5D 形象后就能在这里预览。</small>
+            </div>
+            <img id="still" alt="形象预览" hidden>
+            <video id="video" controls playsinline preload="metadata" aria-label="生成的宠物动作视频" hidden></video>
+            <div class="stage-busy" id="stage-busy" hidden>
+              <span class="spinner" aria-hidden="true"></span>
+              <p id="busy-text">正在重绘形象…</p>
+              <div class="progress" id="progress" hidden>
+                <div class="progress-track" aria-hidden="true"><span></span></div>
+                <p class="progress-text" id="progress-text">已用时 0 秒</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="confirm" id="portrait-confirm" hidden>
+            <p id="portrait-note">这张形象满意吗？确认后用它生成动作视频。</p>
+            <div class="row">
+              <button type="button" class="primary" id="portrait-accept">用它生成视频</button>
+              <a class="ghost mini" id="download-portrait" download hidden>下载图片</a>
+              <button type="button" class="ghost" id="portrait-retry">重新生成</button>
+            </div>
+          </div>
+
+          <div class="stage-foot">
+            <p id="status" role="status" aria-live="polite">等待上传</p>
+            <button id="resume" type="button" class="ghost mini" hidden>继续查询</button>
+            <a id="download" class="primary small" download hidden>下载 MP4</a>
+            <a id="result" target="_blank" rel="noopener noreferrer" hidden>新标签打开 ↗</a>
+          </div>
+          <p class="task" id="task" hidden></p>
+          <details class="prompts result-note" id="save-tip" hidden><summary>图片和视频保存在哪里？</summary><p>生成的形象与成片会自动存到本机工作台的 <code>state/images/</code> 和 <code>state/videos/</code>，保留 30 天；点「下载图片」「下载 MP4」可另存到浏览器的下载目录。重启工作台后仍可下载。</p></details>
+        </section>
+
+        <details class="prompts prompt-peek">
+          <summary>查看 / 复制生图提示词</summary>
+          <p class="hint">在别的平台生图时，上传同一张照片并粘贴下面这段（尺寸 480×480、关闭提示词扩写）。点一下文本框即可全选。</p>
+          <textarea id="portrait-prompt" rows="9" readonly>{{ portrait_prompt }}</textarea>
+          <p class="hint">负向提示词：</p>
+          <textarea id="portrait-negative" rows="2" readonly>{{ portrait_negative }}</textarea>
+        </details>
+      </aside>
+    </div>
+
+    <footer><span>Wan 3.0 图生视频</span><span>目标 {{ duration }} 秒 · 720P · MP4</span></footer>
+  </main>
+</body>
+</html>

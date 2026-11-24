@@ -571,6 +571,7 @@ CREATE TABLE users (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   nickname VARCHAR(64) NOT NULL,
   status ENUM('active','deleted') NOT NULL DEFAULT 'active',
+  role VARCHAR(16) NOT NULL DEFAULT 'user',
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   deleted_at TIMESTAMP NULL
 );

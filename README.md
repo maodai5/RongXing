@@ -42,6 +42,7 @@ backend/
   migrations/    🧬 Alembic 迁移
   tests/         ✅ 后端测试
 mobile/          📱 Expo App
+wan-video-studio/  🎬 独立 Flask 工作台：宠物 2.5D 形象 + Wan 3.0 动作视频（使用说明见该目录 README）
 docs/            📚 文档（索引见 docs/README.md）
 docker-compose.yml  🐳 一键本地编排
 ```
@@ -152,6 +153,22 @@ npm run web        # 浏览器调试
 开发模式未设置 `EXPO_PUBLIC_API_URL` 时，应用会自动使用当前 Web 页面主机或 Expo Metro 主机的 `8000` 端口；仍推荐显式设置，尤其是真机调试或后端改端口。
 
 真机调试需让后端监听局域网：`uvicorn app.main:create_dev_app --factory --host 0.0.0.0 --port 8000`，并把 `EXPO_PUBLIC_API_URL` 改成电脑的局域网地址；发布版只接受 HTTPS。修改环境变量后需完全重启 Expo（`npx expo start -c`），仅在 App 内刷新不会让 Metro 重新注入。
+
+### 🤖 在 Android Studio 里跑原生调试
+
+原生工程已由 `npx expo prebuild` 生成在 `mobile/android`，直接用 Android Studio 打开该目录即可（不要打开仓库根目录）。
+
+1. 先起后端与 Metro：后端 `uvicorn app.main:create_dev_app --factory --host 127.0.0.1 --port 8000`，Metro `cd mobile && EXPO_PUBLIC_API_URL=http://127.0.0.1:8000/api/v1 npx expo start`。
+2. 模拟器/真机接上后执行端口反向，让 App 的 `127.0.0.1` 落到电脑：`adb reverse tcp:8000 tcp:8000 && adb reverse tcp:8081 tcp:8081`。
+3. Android Studio 选中 `app` 配置点 Run，或命令行 `JAVA_HOME=<Android Studio>/jbr ./gradlew assembleDebug`。
+
+本机 Windows 环境有三处已修好的坑，换机器时可复现排查：
+
+- `settings.gradle` 不能带 UTF-8 BOM，否则 Gradle 9 报 `Unexpected character: '\ufeff'`。
+- `react-native-reanimated` 在共享 node_modules 里属于 extraneous，autolinking 会把它的 codegen 路径撑到 260 字符以上；已在 `mobile/package.json` 的 `expo.autolinking.exclude` 排除。
+- CMake 暂存目录默认在深层项目路径下同样会超长，已在 `app/build.gradle` 用 `buildStagingDirectory` 指到 `D:/rx-cxx`。
+
+数据库连接：`backend/.env` 的 `DATABASE_URL` 指向 MySQL（本机 `docker ps` 里的 `rx2-mysql`，库名 `rongxing`），首次运行前执行 `python -m alembic upgrade head`。
 
 ## 📱 Expo 打包与发布
 
@@ -310,7 +327,7 @@ node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/*.test.mjs
 | [设计系统](docs/design.md) | 色彩、排版、组件与动效规范 |
 | [功能与 API](docs/features.md) | 当前功能细节、联调步骤与本地 API 范围 |
 | [运维 Runbook](docs/operations.md) | 环境变量、日志、迁移 / 备份、告警与回归矩阵 |
-| [团队协作与 Git 工作流](docs/collaboration.md) | 分支模型、PR 门禁、评审清单与发布约定 |
+| [团队协作与 Git 工作流](docs/collaboration.md) | 分支、提交、门禁、发布与本地验收命令 |
 | [交付计划](docs/plans/2026-11-17-rongxing-full-stack.md) | 历史任务拆分与验收记录 |
 
 ## 🩺 常见问题

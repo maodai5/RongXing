@@ -1,0 +1,406 @@
+{
+  "title": "绒星 2.0 (Fuzzstar) — 猫主人健康管理与陪伴 App 架构",
+  "view": "services",
+  "nodes": [
+    {
+      "id": "fastapi",
+      "type": "api",
+      "label": "绒星 API",
+      "tech": "FastAPI + Python 3.11",
+      "note": "14 个 router 统一前缀 /api/v1，鉴权分公开 / current_user / consented_user / owned_pet 四档"
+    },
+    {
+      "id": "auth",
+      "type": "service",
+      "label": "认证与配额",
+      "tech": "routers/auth + routers/quota",
+      "note": "配额按 UTC 自然日：初筛 10 / 分身 3 / 聊天 50，红线判定豁免配额"
+    },
+    {
+      "id": "pet_domain",
+      "type": "service",
+      "label": "宠物档案与数字分身",
+      "tech": "routers/pets + avatars + avatar_assets",
+      "note": "建档、形象三级回退（个人片→占位片→静态）、素材与版本映射"
+    },
+    {
+      "id": "health_domain",
+      "type": "service",
+      "label": "健康管理",
+      "tech": "routers/screening + health + diet + weights",
+      "note": "初筛提交、健康分展示、饮食与体重记录"
+    },
+    {
+      "id": "chat_domain",
+      "type": "service",
+      "label": "聊天与叫声解读",
+      "tech": "routers/chat",
+      "note": "陪伴对话与叫声情绪解读，置信度 <0.4 标注「不太确定」，仅娱乐参考"
+    },
+    {
+      "id": "motion_domain",
+      "type": "service",
+      "label": "萌宠动图",
+      "tech": "routers/motion + tasks + media",
+      "note": "12 个动作的 GIF 生成与播放，客户端只轮询任务状态"
+    },
+    {
+      "id": "triage",
+      "type": "function",
+      "label": "规则初筛引擎",
+      "tech": "services/triage.py + rules/*.yaml",
+      "note": "红线最先硬判 urgent → 基础项 vet → 症状最高档 → normal，纯函数可复现，命中即「建议立即就医」卡，绝不经过 LLM"
+    },
+    {
+      "id": "health_score",
+      "type": "function",
+      "label": "健康分计算",
+      "tech": "services/health.py",
+      "note": "读时衰减模型，observe 观察窗口 72 小时"
+    },
+    {
+      "id": "advice",
+      "type": "function",
+      "label": "AI 建议生成",
+      "tech": "services/advice.py",
+      "note": "只处理非红线部分，消耗分身与聊天配额"
+    },
+    {
+      "id": "tasks_svc",
+      "type": "service",
+      "label": "任务编排",
+      "tech": "services/tasks.py",
+      "note": "幂等入队，租约 15 分钟，最多重试 3 次"
+    },
+    {
+      "id": "worker",
+      "type": "service",
+      "label": "arq Worker",
+      "tech": "app/worker.py",
+      "note": "max_jobs=2，每 5 秒 sweep 一次租约过期任务；启动强依赖 DASHSCOPE_API_KEY 与 S3 配置"
+    },
+    {
+      "id": "mail_worker",
+      "type": "service",
+      "label": "邮件 Worker",
+      "tech": "services/mail_worker",
+      "note": "独立进程发送验证码与提醒邮件，避免阻塞 API 请求"
+    },
+    {
+      "id": "app_native",
+      "type": "client",
+      "label": "Expo 移动端 (iOS/Android)",
+      "tech": "Expo SDK 58 / RN 0.88 / expo-router",
+      "note": "原生与 Web 同一套代码，四个 tab 加子页；主题品牌色 #FEAE36"
+    },
+    {
+      "id": "app_web",
+      "type": "client",
+      "label": "Expo Web 版",
+      "tech": "react-native-web 0.21",
+      "note": "刷新会丢登录态与离线队列，无录音、无本地通知，生产必须 HTTPS"
+    },
+    {
+      "id": "offline_queue",
+      "type": "service",
+      "label": "离线队列",
+      "tech": "retry-queue / offline-store / offline-sync",
+      "note": "diet 与 chat_text 入队，音频不入队；原生落 expo-sqlite，Web 用内存"
+    },
+    {
+      "id": "session",
+      "type": "service",
+      "label": "会话管理",
+      "tech": "session.ts",
+      "note": "内存 access + 持久 refresh，401 单飞刷新只重试一次"
+    },
+    {
+      "id": "api_client",
+      "type": "service",
+      "label": "API 客户端",
+      "tech": "api.ts 单例",
+      "note": "原生 token 存 SecureStore，Web 存内存"
+    },
+    {
+      "id": "mysql",
+      "type": "database",
+      "label": "MySQL 8",
+      "tech": "MySQL 8.4 / SQLAlchemy 2 / Alembic",
+      "note": "25 张表按 user/pet/health/task/media/chat/tracker/platform 分域；队列与配额的唯一事实源，运行时不支持 SQLite"
+    },
+    {
+      "id": "redis",
+      "type": "queue",
+      "label": "Redis 7 + arq",
+      "tech": "Redis 7-alpine",
+      "note": "只承担调度信号，Redis 宕掉任务也不会丢，因为真源在 DB"
+    },
+    {
+      "id": "s3",
+      "type": "storage",
+      "label": "S3 兼容对象存储",
+      "tech": "MinIO / S3（必须开版本控制）",
+      "note": "存媒体与 GIF 产物，桶未开版本控制时上传确认会全失败"
+    },
+    {
+      "id": "rules",
+      "type": "storage",
+      "label": "版本化规则包",
+      "tech": "rules/*.yaml（sx/rl/sc/at/ct/fd/am/motion）",
+      "note": "规则 version 是契约，改规则必须升版本并同步 FRD 与 features"
+    },
+    {
+      "id": "dashscope",
+      "type": "external",
+      "label": "DashScope 阿里云百炼",
+      "tech": "qwen-max / qwen-plus / qwen-image-edit",
+      "note": "文本建议、图像编辑、图生视频（wanx2.1-i2v-turbo）与语音合成（qwen2-audio）的唯一外部模型入口"
+    },
+    {
+      "id": "smtp",
+      "type": "external",
+      "label": "SMTP 邮件服务",
+      "tech": "SMTP",
+      "note": "验证码与提醒邮件出口"
+    },
+    {
+      "id": "ffprobe",
+      "type": "external",
+      "label": "ffprobe",
+      "tech": "系统二进制",
+      "note": "媒体校验依赖系统 ffprobe，缺失时上传校验会失败"
+    }
+  ],
+  "edges": [
+    {
+      "from": "app_native",
+      "to": "api_client",
+      "label": "HTTPS 调用 /api/v1"
+    },
+    {
+      "from": "app_web",
+      "to": "api_client",
+      "label": "HTTPS 调用（生产必须 HTTPS）"
+    },
+    {
+      "from": "app_native",
+      "to": "offline_queue",
+      "label": "diet / chat_text 落队"
+    },
+    {
+      "from": "offline_queue",
+      "to": "api_client",
+      "label": "5s 轮询 + 回前台 + online 事件补发，带原幂等键"
+    },
+    {
+      "from": "api_client",
+      "to": "session",
+      "label": "401 → 单飞刷新"
+    },
+    {
+      "from": "session",
+      "to": "fastapi",
+      "label": "refresh 换新 access token"
+    },
+    {
+      "from": "api_client",
+      "to": "fastapi",
+      "label": "REST + Bearer token，附 X-Request-ID"
+    },
+    {
+      "from": "fastapi",
+      "to": "auth",
+      "label": "鉴权中间件判定权限档位"
+    },
+    {
+      "from": "fastapi",
+      "to": "pet_domain",
+      "label": "档案与分身素材"
+    },
+    {
+      "from": "fastapi",
+      "to": "health_domain",
+      "label": "初筛 / 健康 / 饮食 / 体重"
+    },
+    {
+      "from": "fastapi",
+      "to": "chat_domain",
+      "label": "对话与叫声解读"
+    },
+    {
+      "from": "fastapi",
+      "to": "motion_domain",
+      "label": "动图任务提交与轮询"
+    },
+    {
+      "from": "fastapi",
+      "to": "tasks_svc",
+      "label": "投递异步生成任务"
+    },
+    {
+      "from": "health_domain",
+      "to": "triage",
+      "label": "提交症状清单，走规则初筛"
+    },
+    {
+      "from": "triage",
+      "to": "rules",
+      "label": "加载版本化规则 YAML"
+    },
+    {
+      "from": "triage",
+      "to": "mysql",
+      "label": "存档初筛结果与命中红线"
+    },
+    {
+      "from": "triage",
+      "to": "advice",
+      "label": "仅非红线部分才请求 AI 建议"
+    },
+    {
+      "from": "advice",
+      "to": "dashscope",
+      "label": "qwen-max / qwen-plus 生成建议文案"
+    },
+    {
+      "from": "health_score",
+      "to": "mysql",
+      "label": "读健康档案并按 72h 窗口衰减"
+    },
+    {
+      "from": "health_domain",
+      "to": "health_score",
+      "label": "计算并展示健康分"
+    },
+    {
+      "from": "tasks_svc",
+      "to": "mysql",
+      "label": "DB 为队列真源，幂等入队 + 租约 15 分钟"
+    },
+    {
+      "from": "tasks_svc",
+      "to": "redis",
+      "label": "投递 arq 调度信号"
+    },
+    {
+      "from": "worker",
+      "to": "redis",
+      "label": "arq 消费 + 每 5 秒 sweep 租约"
+    },
+    {
+      "from": "worker",
+      "to": "dashscope",
+      "label": "调用生成模型（图像 / 视频 / 语音）"
+    },
+    {
+      "from": "worker",
+      "to": "s3",
+      "label": "写入媒体与 GIF 产物"
+    },
+    {
+      "from": "worker",
+      "to": "mysql",
+      "label": "回写任务状态与产物元数据"
+    },
+    {
+      "from": "worker",
+      "to": "ffprobe",
+      "label": "校验时长、分辨率与 GIF 规格"
+    },
+    {
+      "from": "motion_domain",
+      "to": "worker",
+      "label": "生成 12 个动作动图"
+    },
+    {
+      "from": "chat_domain",
+      "to": "dashscope",
+      "label": "qwen2-audio 合成语音与文本回复"
+    },
+    {
+      "from": "chat_domain",
+      "to": "mysql",
+      "label": "读写对话与情绪记录"
+    },
+    {
+      "from": "pet_domain",
+      "to": "mysql",
+      "label": "读写宠物档案与分身配置"
+    },
+    {
+      "from": "motion_domain",
+      "to": "s3",
+      "label": "产物下载与播放地址"
+    },
+    {
+      "from": "auth",
+      "to": "mysql",
+      "label": "读写用户、配额与拒绝记录"
+    },
+    {
+      "from": "auth",
+      "to": "mail_worker",
+      "label": "发送验证码与提醒邮件"
+    },
+    {
+      "from": "mail_worker",
+      "to": "smtp",
+      "label": "投递邮件"
+    },
+    {
+      "from": "mail_worker",
+      "to": "mysql",
+      "label": "回写发送状态"
+    }
+  ],
+  "groups": [
+    {
+      "id": "g_client",
+      "label": "客户端 (Expo 同一套代码)",
+      "children": [
+        "app_native",
+        "app_web",
+        "offline_queue",
+        "session",
+        "api_client"
+      ]
+    },
+    {
+      "id": "g_backend",
+      "label": "后端 FastAPI (backend/)",
+      "children": [
+        "fastapi",
+        "auth",
+        "pet_domain",
+        "health_domain",
+        "chat_domain",
+        "motion_domain",
+        "triage",
+        "health_score",
+        "advice",
+        "tasks_svc",
+        "worker",
+        "mail_worker"
+      ]
+    },
+    {
+      "id": "g_data",
+      "label": "数据与任务层",
+      "children": [
+        "mysql",
+        "redis",
+        "s3",
+        "rules"
+      ]
+    },
+    {
+      "id": "g_ext",
+      "label": "外部依赖",
+      "children": [
+        "dashscope",
+        "smtp",
+        "ffprobe"
+      ]
+    }
+  ]
+}
