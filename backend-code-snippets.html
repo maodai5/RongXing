@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>绒星 · 后端核心代码切片</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 48px 24px 64px;
+    background: #010409;
+    color: #c9d1d9;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; }
+  .eyebrow { color: #58a6ff; font-size: 12px; letter-spacing: 2px; font-weight: 600; }
+  h1 { margin: 10px 0 8px; color: #e6edf3; font-size: 32px; letter-spacing: 1px; }
+  .sub { margin: 0 0 28px; color: #8b949e; font-size: 14px; }
+  .card {
+    margin: 22px 0;
+    background: #0d1117;
+    border: 1px solid #30363d;
+    border-radius: 12px;
+    overflow: hidden;
+    page-break-inside: avoid;
+  }
+  .card-head {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    padding: 18px 22px;
+    background: #161b22;
+    border-bottom: 1px solid #21262d;
+  }
+  .num {
+    flex: none;
+    margin-top: 1px;
+    padding: 3px 9px;
+    border: 1px solid #1f6feb;
+    border-radius: 999px;
+    color: #58a6ff;
+    font-family: "Cascadia Code", Consolas, monospace;
+    font-size: 12px;
+  }
+  .card-title h2 { margin: 0; color: #e6edf3; font-size: 17px; font-weight: 600; }
+  .file {
+    margin-top: 5px;
+    color: #8b949e;
+    font-family: "Cascadia Code", Consolas, monospace;
+    font-size: 12px;
+  }
+  .caption {
+    margin: 0;
+    padding: 14px 22px 0;
+    color: #8b949e;
+    font-size: 13.5px;
+    line-height: 1.75;
+  }
+  pre {
+    margin: 14px 0 0;
+    padding: 18px 22px 24px;
+    overflow-x: auto;
+    background: #0d1117;
+  }
+  code {
+    color: #c9d1d9;
+    font-family: "Cascadia Code", Consolas, "Courier New", monospace;
+    font-size: 13.5px;
+    line-height: 1.62;
+    tab-size: 4;
+  }
+  .tok-comment { color: #8b949e; font-style: italic; }
+  .tok-string { color: #a5d6ff; }
+  .tok-keyword { color: #ff7b72; }
+  .tok-decorator { color: #d2a8ff; }
+  .tok-number { color: #79c0ff; }
+  footer {
+    margin-top: 34px;
+    color: #484f58;
+    font-size: 12px;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">绒星 RONGXING · 技能大赛答辩</div>
+  <h1>后端核心代码切片</h1>
+  <p class="sub">对应答辩稿：三、后端架构、可靠性与质量保障｜3 张卡片，浏览器放大后按卡片截图</p>
+
+  <section class="card">
+    <div class="card-head">
+      <span class="num">01</span>
+      <div class="card-title">
+        <h2>路由层：只做鉴权、参数和调度</h2>
+        <div class="file">backend/app/routers/screening.py</div>
+      </div>
+    </div>
+    <p class="caption">接口只做三件事：鉴权、接参数、把判定交给纯函数。数据库和模型都不在这一层。</p>
+    <pre><code><span class="tok-decorator">@router.post</span>(<span class="tok-string">&#x27;/pets/{pet_id}/screenings&#x27;</span>, status_code=<span class="tok-number">201</span>)
+<span class="tok-keyword">async</span> <span class="tok-keyword">def</span> submit_screening(
+    data: ScreeningInput,
+    pet_id: int,
+    user: User = Depends(consented_user),
+    db: Session = Depends(get_db),
+    bundle: RulesBundle = Depends(triage_rules),
+):
+    pet = owned_pet(pet_id, user, db)
+    answers = {
+        <span class="tok-string">&#x27;spirit&#x27;</span>: data.spirit,
+        <span class="tok-string">&#x27;appetite&#x27;</span>: data.appetite,
+        <span class="tok-string">&#x27;symptoms&#x27;</span>: [s.model_dump() <span class="tok-keyword">for</span> s <span class="tok-keyword">in</span> data.symptoms],
+        <span class="tok-string">&#x27;redline_options&#x27;</span>: data.redline_options,
+    }
+
+    errors = validate_answers(bundle, answers)
+    <span class="tok-keyword">if</span> errors:
+        <span class="tok-keyword">raise</span> APIError(<span class="tok-number">400</span>, <span class="tok-string">&#x27;VALIDATION_ERROR&#x27;</span>, <span class="tok-string">&#x27;请完善标记的必填项&#x27;</span>, {<span class="tok-string">&#x27;fields&#x27;</span>: errors})
+
+    result = triage(bundle, answers)          <span class="tok-comment"># 纯函数：不查库、不调模型</span>
+    <span class="tok-keyword">if</span> <span class="tok-keyword">not</span> result[<span class="tok-string">&#x27;redline_hit&#x27;</span>]:
+        quota_gate(db, user.id, <span class="tok-string">&#x27;screening&#x27;</span>)  <span class="tok-comment"># 红线不占配额</span></code></pre>
+  </section>
+  <section class="card">
+    <div class="card-head">
+      <span class="num">02</span>
+      <div class="card-title">
+        <h2>纯函数判定：同输入、同版本永远同结果</h2>
+        <div class="file">backend/app/services/triage.py</div>
+      </div>
+    </div>
+    <p class="caption">只依赖入参和规则包，不碰数据库、不调模型；结果带上规则版本，可复现、可追溯。</p>
+    <pre><code><span class="tok-keyword">def</span> triage(bundle: RulesBundle, answers: dict) -&gt; dict:
+    <span class="tok-string">&quot;&quot;</span><span class="tok-string">&quot;红线最先；多症状取最高档。纯函数，同版本可复现。&quot;</span><span class="tok-string">&quot;&quot;</span>
+    hits = []
+    option_map = {o[<span class="tok-string">&#x27;code&#x27;</span>]: r[<span class="tok-string">&#x27;code&#x27;</span>] <span class="tok-keyword">for</span> r <span class="tok-keyword">in</span> bundle.redlines[<span class="tok-string">&#x27;redlines&#x27;</span>] <span class="tok-keyword">for</span> o <span class="tok-keyword">in</span> r.get(<span class="tok-string">&#x27;options&#x27;</span>, [])}
+    selected = {s[<span class="tok-string">&#x27;code&#x27;</span>]: s <span class="tok-keyword">for</span> s <span class="tok-keyword">in</span> answers.get(<span class="tok-string">&#x27;symptoms&#x27;</span>) <span class="tok-keyword">or</span> []}
+
+    <span class="tok-keyword">for</span> redline <span class="tok-keyword">in</span> bundle.redlines[<span class="tok-string">&#x27;redlines&#x27;</span>]:
+        code = redline[<span class="tok-string">&#x27;code&#x27;</span>]
+        explicit = any(option_map.get(o) == code <span class="tok-keyword">for</span> o <span class="tok-keyword">in</span> answers.get(<span class="tok-string">&#x27;redline_options&#x27;</span>) <span class="tok-keyword">or</span> [])
+        derived = redline.get(<span class="tok-string">&#x27;derived&#x27;</span>)
+        derived_hit = (
+            bool(derived)
+            <span class="tok-keyword">and</span> selected.get(derived[<span class="tok-string">&#x27;symptom&#x27;</span>], {}).get(<span class="tok-string">&#x27;duration&#x27;</span>) <span class="tok-keyword">in</span> derived[<span class="tok-string">&#x27;duration&#x27;</span>]
+        )
+        <span class="tok-keyword">if</span> explicit <span class="tok-keyword">or</span> derived_hit:
+            hits.append(code)
+
+    grades = {}
+    <span class="tok-keyword">for</span> code, item <span class="tok-keyword">in</span> selected.items():
+        entry = _symptom_index(bundle)[code]
+        ctx = {
+            <span class="tok-string">&#x27;duration&#x27;</span>: item.get(<span class="tok-string">&#x27;duration&#x27;</span>),
+            <span class="tok-string">&#x27;frequency&#x27;</span>: item.get(<span class="tok-string">&#x27;frequency&#x27;</span>),
+            <span class="tok-string">&#x27;spirit&#x27;</span>: answers.get(<span class="tok-string">&#x27;spirit&#x27;</span>),
+            <span class="tok-string">&#x27;appetite&#x27;</span>: answers.get(<span class="tok-string">&#x27;appetite&#x27;</span>),
+            <span class="tok-string">&#x27;severe&#x27;</span>: bool(item.get(<span class="tok-string">&#x27;severe&#x27;</span>, <span class="tok-keyword">False</span>)),
+        }
+        grades[code] = <span class="tok-string">&#x27;vet&#x27;</span> <span class="tok-keyword">if</span> any(_matches(c, ctx) <span class="tok-keyword">for</span> c <span class="tok-keyword">in</span> entry.get(<span class="tok-string">&#x27;vet&#x27;</span>, [])) <span class="tok-keyword">else</span> <span class="tok-string">&#x27;observe&#x27;</span>
+
+    <span class="tok-keyword">if</span> hits:
+        state = <span class="tok-string">&#x27;urgent&#x27;</span>
+    <span class="tok-keyword">elif</span> (
+        answers.get(<span class="tok-string">&#x27;spirit&#x27;</span>) <span class="tok-keyword">in</span> bundle.symptoms[<span class="tok-string">&#x27;vet_triggers&#x27;</span>][<span class="tok-string">&#x27;spirit&#x27;</span>]
+        <span class="tok-keyword">or</span> answers.get(<span class="tok-string">&#x27;appetite&#x27;</span>) <span class="tok-keyword">in</span> bundle.symptoms[<span class="tok-string">&#x27;vet_triggers&#x27;</span>][<span class="tok-string">&#x27;appetite&#x27;</span>]
+    ) <span class="tok-keyword">or</span> <span class="tok-string">&#x27;vet&#x27;</span> <span class="tok-keyword">in</span> grades.values():
+        state = <span class="tok-string">&#x27;vet&#x27;</span>
+    <span class="tok-keyword">elif</span> grades:
+        state = <span class="tok-string">&#x27;observe&#x27;</span>
+    <span class="tok-keyword">else</span>:
+        state = <span class="tok-string">&#x27;normal&#x27;</span>
+
+    <span class="tok-keyword">return</span> {
+        <span class="tok-string">&#x27;state&#x27;</span>: state,
+        <span class="tok-string">&#x27;redline_hit&#x27;</span>: bool(hits),
+        <span class="tok-string">&#x27;redlines&#x27;</span>: hits,
+        <span class="tok-string">&#x27;symptom_grades&#x27;</span>: grades,
+        <span class="tok-string">&#x27;rules_version&#x27;</span>: bundle.rules_version,
+    }</code></pre>
+  </section>
+  <section class="card">
+    <div class="card-head">
+      <span class="num">03</span>
+      <div class="card-title">
+        <h2>可靠性：幂等 + 配额</h2>
+        <div class="file">backend/app/services/idempotency.py · quota.py</div>
+      </div>
+    </div>
+    <p class="caption">幂等键挡住弱网重试；配额用数据库原子自增，和业务写同一事务，失败回滚不扣额度。</p>
+    <pre><code><span class="tok-comment"># 幂等：同键同载荷返回缓存，不同载荷 409</span>
+<span class="tok-keyword">def</span> find_replay(db: Session, user_id: int, key: str, request_hash: str):
+    row = db.scalar(
+        select(RequestIdempotency).where(
+            RequestIdempotency.user_id == user_id,
+            RequestIdempotency.key == key,
+        )
+    )
+    <span class="tok-keyword">if</span> row <span class="tok-keyword">is</span> <span class="tok-keyword">None</span>:
+        <span class="tok-keyword">return</span> <span class="tok-keyword">None</span>
+    <span class="tok-keyword">if</span> row.request_hash != request_hash:
+        <span class="tok-keyword">raise</span> APIError(<span class="tok-number">409</span>, <span class="tok-string">&#x27;IDEMPOTENCY_CONFLICT&#x27;</span>, <span class="tok-string">&#x27;该幂等键已用于不同的请求&#x27;</span>)
+    <span class="tok-keyword">return</span> row.response_json
+
+
+<span class="tok-comment"># 配额：数据库原子自增，超限抛 429；失败回滚不扣额度</span>
+<span class="tok-keyword">def</span> consume_quota(db: Session, user_id: int, metric: str, *, now: datetime) -&gt; int:
+    limit = quota_limits()[metric]
+    stmt = (
+        mysql_insert(UsageCounter)
+        .values(user_id=user_id, day=now.date(), metric=metric, count=<span class="tok-number">1</span>)
+        .on_duplicate_key_update(count=UsageCounter.count + <span class="tok-number">1</span>)
+    )
+    db.execute(stmt)
+    db.flush()
+    count = db.scalar(select(UsageCounter.count).where(
+        UsageCounter.user_id == user_id,
+        UsageCounter.day == now.date(),
+        UsageCounter.metric == metric,
+    ))
+    <span class="tok-keyword">if</span> count &gt; limit:
+        <span class="tok-keyword">raise</span> QuotaExceeded(metric, count, limit)
+    <span class="tok-keyword">return</span> count</code></pre>
+  </section>
+  <footer>代码节选自项目实际实现，省略了与讲解无关的导入和异常分支。</footer>
+</div>
+</body>
+</html>

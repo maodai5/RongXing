@@ -1,6 +1,6 @@
 // AI 思考中动画：三个依次跳动的圆点 + "绒星正在思考…"文案。
 // 用于聊天页等待 AI 回复时显示在消息列表底部，提供可见的反馈。
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Animated, Easing, Image, StyleSheet, Text, View } from 'react-native';
 import { colors } from '../theme';
 
@@ -9,8 +9,8 @@ type DotProps = {
 };
 
 function ThinkingDot({ delay }: DotProps) {
-  const scale = useRef(new Animated.Value(0.6)).current;
-  const opacity = useRef(new Animated.Value(0.3)).current;
+  const scale = useMemo(() => new Animated.Value(0.6), []);
+  const opacity = useMemo(() => new Animated.Value(0.3), []);
 
   useEffect(() => {
     const anim = Animated.loop(

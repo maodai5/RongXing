@@ -48,3 +48,13 @@ docs/*逐字稿.md
 # local media storage (dev)
 backend/uploads/
 
+
+# 答辩稿等文档
+*.docx
+# 调试构建产物
+/rongxing-debug.apk
+# AI 工具本地数据
+/.workbuddy/
+/.trae-html-share-packages/
+# 上游同步用的残留克隆
+/RongXing/
