@@ -6,6 +6,8 @@
 
 from typing import Literal
 
+import logging
+
 from fastapi import APIRouter, Depends, Query, Request, Response
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -27,12 +29,21 @@ from app.models import (
     Task,
     User,
 )
-from app.services.chat import build_persona_messages, detect_redline, fallback_reply, parse_chat_reply, redline_response
+from app.services.chat import (
+    ChatReplyError,
+    build_persona_messages,
+    detect_redline,
+    fallback_reply,
+    parse_chat_reply,
+    redline_response,
+    reformat_reply,
+)
 from app.services.idempotency import find_replay, hash_request, validate_key
 from app.services.quota import quota_gate
 from app.services.tasks import enqueue_task
 
 router = APIRouter(prefix='/api/v1', tags=['chat'])
+logger = logging.getLogger('rongxing.chat')
 
 
 def chat_config(request: Request) -> dict:
@@ -290,7 +301,12 @@ async def send_message(
             messages = build_persona_messages(pet_profile, latest.state if latest else None, history, config)
             try:
                 raw = await provider.chat(messages, temperature=0.7, max_tokens=300)
-                result = {**parse_chat_reply(raw, config), 'source': 'llm'}
+                try:
+                    parsed = parse_chat_reply(raw, config)
+                except ChatReplyError:
+                    # 上下文变长后模型常跟着历史用纯文本作答，改写一次保住真实回复
+                    parsed = await reformat_reply(provider, raw, config)
+                result = {**parsed, 'source': 'llm'}
                 usage = getattr(provider, 'last_usage', None) or {}
                 db.add(
                     AiUsageLog(
@@ -304,6 +320,8 @@ async def send_message(
                     )
                 )
             except Exception:
+                # 降级前留下原因，避免"AI 没回复"时无从排查
+                logger.warning('chat llm failed, falling back to template', exc_info=True)
                 db.add(
                     AiUsageLog(
                         user_id=user.id,

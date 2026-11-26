@@ -31,7 +31,7 @@ python -m venv .venv
 用记事本 / VS Code 打开 `backend/team.env`，**只改第一行**：
 
 ```ini
-SERVER_HOST=10.216.251.47
+SERVER_HOST=10.197.232.47
 ```
 
 把它换成一个可达的数据库主机地址即可：

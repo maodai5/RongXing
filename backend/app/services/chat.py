@@ -16,6 +16,12 @@ FORBIDDEN_WORDS = ('确诊', '治疗', '诊断')
 CHAT_DISCLAIMER = 'AI 结果仅供日常健康管理参考,不替代专业兽医诊断'
 REDLINE_SUBTITLE = '该症状可能危及生命,请不要等待观察,尽快前往具备急诊能力的宠物医院。'
 _FENCE = re.compile(r'^\s*```(?:json)?\s*|\s*```\s*$', re.IGNORECASE)
+# 模型偶尔用纯文本作答时，用它把已生成的回复改写成 JSON，避免直接降级成模板。
+REFORMAT_PROMPT = (
+    '把下面这条已经写好的宠物回复整理成 JSON，只输出 JSON：'
+    '{"reply": "原回复内容", "emotion": "happy/relaxed/annoyed/fearful/painful/seeking_attention 之一"}。'
+    '不要改写内容，不要输出其他文字。'
+)
 _SICK_STATES = ('observe', 'vet', 'urgent')
 _SEX_LABELS = {'male': '弟弟', 'female': '妹妹', 'unknown': '小朋友'}
 _BODY_LABELS = {'slim': '偏瘦', 'standard': '标准', 'chubby': '偏胖'}
@@ -143,6 +149,20 @@ def parse_chat_reply(raw: str, config: dict) -> dict:
 
 def fallback_reply(config: dict) -> dict:
     return {'reply': config['fallback_reply'], 'emotion': 'relaxed', 'source': 'template'}
+
+
+async def reformat_reply(provider, raw: str, config: dict) -> dict:
+    """把纯文本回复改写成约定的 JSON 结构。
+
+    上下文变长后 glm-4-flash 容易跟着历史里的纯文本作答，直接解析必然失败；
+    这里用一次低温度的改写请求保住模型的真实回复，而不是退回固定模板。
+    """
+    fixed = await provider.chat(
+        [{'role': 'system', 'content': REFORMAT_PROMPT}, {'role': 'user', 'content': f'原始回复：{raw}'}],
+        temperature=0.2,
+        max_tokens=200,
+    )
+    return parse_chat_reply(fixed, config)
 
 
 def redline_response(config: dict) -> dict:
